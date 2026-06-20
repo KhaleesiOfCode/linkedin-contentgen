@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Post Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>LinkedIn Post Manager</h1>
+
+    <div class="calendar-bar">
+      <strong>This week:</strong>
+      <span class="week-badge">{{ current_week.emoji }}</span>
+      {{ current_week.name }}
+      {% if active_override %}
+      <span class="override-tag">override</span>
+      {% endif %}
+      <span class="upcoming-hint">
+        &nbsp;|&nbsp; Next:
+        {% for w in upcoming_weeks[1:3] %}
+          {{ w.emoji }}{{ w.name }}{% if not loop.last %} &middot; {% endif %}
+        {% endfor %}
+      </span>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">TODAY'S PROMPT</span>
+        <span class="prompt-theme">{{ daily_prompt.emoji }} {{ daily_prompt.theme }}</span>
+      </div>
+      <p class="prompt-text">{{ daily_prompt.prompt }}</p>
+      <div class="prompt-actions">
+        <button class="btn btn-new-prompt" onclick="refreshPrompt()">New Prompt</button>
+        <a href="/prompt?theme={{ theme_filter }}" class="btn btn-view" target="_blank">JSON</a>
+      </div>
+    </div>
+
+    <div class="custom-prompt-bar">
+      <form action="/generate" method="post" class="custom-prompt-form">
+        <label for="custom-prompt">Write your own post idea:</label>
+        <div class="custom-prompt-row">
+          <input type="text" name="custom_prompt" id="custom-prompt" class="custom-input"
+            placeholder="e.g. A comparison of RAG vs fine-tuning for production use cases" autocomplete="off">
+          <select name="theme" class="theme-select-inline">
+            <option value="">Default theme</option>
+            {% for t in all_themes %}
+            <option value="{{ t }}" {{ 'selected' if theme_filter == t }}>{{ t }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-generate">Generate from Prompt</button>
+        </div>
+      </form>
+    </div>
+
+    <details class="auto-bar">
+      <summary class="auto-summary">Auto-generate from weekly topics</summary>
+      <div class="generate-bar">
+        <form action="/generate" method="post" class="generate-form">
+          <label for="theme-select">Theme:</label>
+          <select name="theme" id="theme-select">
+            <option value="">Auto ({{ current_week.name }})</option>
+            {% for t in all_themes %}
+            <option value="{{ t }}" {{ 'selected' if theme_filter == t }}>{{ t }}</option>
+            {% endfor %}
+          </select>
+          <input type="number" name="count" value="1" min="1" max="5" class="count-input">
+          <button type="submit" class="btn btn-generate">Generate</button>
+        </form>
+      </div>
+    </details>
+
+    <nav class="tabs">
+      <a href="/{% if theme_filter %}?theme={{ theme_filter }}{% endif %}" class="{{ 'active' if not active_filter }}">All ({{ counts.pending + counts.approved + counts.rejected }})</a>
+      <a href="/?status=pending{% if theme_filter %}&theme={{ theme_filter }}{% endif %}" class="{{ 'active' if active_filter == 'pending' }}">Pending ({{ counts.pending }})</a>
+      <a href="/?status=approved{% if theme_filter %}&theme={{ theme_filter }}{% endif %}" class="{{ 'active' if active_filter == 'approved' }}">Approved ({{ counts.approved }})</a>
+      <a href="/?status=rejected{% if theme_filter %}&theme={{ theme_filter }}{% endif %}" class="{{ 'active' if active_filter == 'rejected' }}">Rejected ({{ counts.rejected }})</a>
+    </nav>
+  </header>
+
+  <main>
+    {% if drafts %}
+      {% for draft in drafts %}
+      <article class="draft-card status-{{ draft.status }}">
+        <div class="draft-meta">
+          <span class="badge badge-{{ draft.status }}">{{ draft.status }}</span>
+          <span class="week-tag">{{ draft.week_theme or draft.topic[:20] }}</span>
+          <span class="topic">{{ draft.topic[:40] }}{% if draft.topic|length > 40 %}...{% endif %}</span>
+          <span class="date">{{ draft.created_at[:10] }}</span>
+        </div>
+        {% if draft.image_file %}
+        <div class="draft-card-image">
+          <img src="/images/{{ draft.image_file }}" alt="Post image" loading="lazy">
+          <div class="image-download">
+            <a href="/images/{{ draft.image_file }}/download" class="btn btn-download" download>Download Image</a>
+          </div>
+        </div>
+        {% endif %}
+        <div class="draft-preview">{{ draft.content[:300] }}{% if draft.content|length > 300 %}...{% endif %}</div>
+        <div class="draft-actions">
+          <a href="/draft/{{ draft.id }}" class="btn btn-view">View</a>
+          {% if draft.status == 'pending' %}
+          <form action="/draft/{{ draft.id }}/approve" method="post" class="inline">
+            <button class="btn btn-approve">Approve</button>
+          </form>
+          <form action="/draft/{{ draft.id }}/reject" method="post" class="inline">
+            <button class="btn btn-reject">Reject</button>
+          </form>
+          {% elif draft.status == 'approved' or draft.status == 'rejected' %}
+          <form action="/draft/{{ draft.id }}/reopen" method="post" class="inline">
+            <button class="btn btn-reopen">Reopen</button>
+          </form>
+          {% endif %}
+          <form action="/draft/{{ draft.id }}/delete" method="post" class="inline" onsubmit="return confirm('Delete this draft?')">
+            <button class="btn btn-delete">Delete</button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    {% else %}
+      <p class="empty">No drafts yet. Use the form above to generate one.</p>
+    {% endif %}
+  </main>
+</div>
+<script>
+function refreshPrompt() {
+  var theme = "{{ theme_filter }}";
+  var url = "/prompt" + (theme ? "?theme=" + encodeURIComponent(theme) : "");
+  fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+    document.querySelector(".prompt-text").textContent = data.prompt;
+    document.querySelector(".prompt-theme").textContent = data.emoji + " " + data.theme;
+  });
+}
+</script>
+</body>
+</html>

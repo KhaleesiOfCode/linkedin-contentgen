@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Draft — LinkedIn Post Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <a href="/" class="back-link">&larr; Back to dashboard</a>
+    <h1>Review Draft</h1>
+  </header>
+
+  <main>
+    <div class="draft-full">
+      <div class="draft-meta">
+        <span class="badge badge-{{ draft.status }}">{{ draft.status }}</span>
+        <span class="week-tag">{{ draft.week_theme }}</span>
+        <span class="topic">{{ draft.topic }}</span>
+        <span class="date">{{ draft.created_at[:10] }}</span>
+        {% if draft.approved_at %}
+        <span class="date">Approved: {{ draft.approved_at[:10] }}</span>
+        {% endif %}
+      </div>
+
+      {% if draft.image_file %}
+      <div class="draft-image-full">
+        <img src="/images/{{ draft.image_file }}" alt="Post image">
+        <div class="image-download">
+          <a href="/images/{{ draft.image_file }}/download" class="btn btn-download" download>Download Image</a>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="draft-content">{{ draft.content }}</div>
+
+      <div class="draft-actions">
+        {% if draft.status == 'pending' %}
+        <form action="/draft/{{ draft.id }}/approve" method="post" class="inline">
+          <button class="btn btn-approve btn-lg">Approve &amp; Queue for Posting</button>
+        </form>
+        <form action="/draft/{{ draft.id }}/reject" method="post" class="inline">
+          <button class="btn btn-reject btn-lg">Reject</button>
+        </form>
+        {% elif draft.status == 'approved' or draft.status == 'rejected' %}
+        <form action="/draft/{{ draft.id }}/reopen" method="post" class="inline">
+          <button class="btn btn-reopen">Move back to Pending</button>
+        </form>
+        {% endif %}
+        <form action="/draft/{{ draft.id }}/delete" method="post" class="inline" onsubmit="return confirm('Delete this draft permanently?')">
+          <button class="btn btn-delete">Delete</button>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
